@@ -5,6 +5,9 @@ on:
     branches:
       - vue
 
+permissions:
+  contents: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
