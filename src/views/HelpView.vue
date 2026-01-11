@@ -79,6 +79,13 @@
                         </ul>
                     </li>
                 </ul>
+
+                <h2>反馈与贡献</h2>
+                <ul>
+                    <li>如有问题或建议，欢迎在 GitHub 仓库提交 Issue 或 Pull Request。</li>
+                    <li>项目地址：<a href="https://github.com/xCipHanD/SUSTech_AutoScheduler" target="_blank"
+                            rel="noopener noreferrer">https://github.com/xCipHanD/SUSTech_AutoScheduler</a></li>
+                </ul>
             </div>
         </el-main>
     </el-container>
