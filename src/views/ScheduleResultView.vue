@@ -142,7 +142,8 @@
     // Flatten the bundle list to a single course list for the grid
     const flatSchedule = computed(() => currentSchedule.value ? currentSchedule.value.flat() : []);
 
-    const currentCourseCount = computed(() => flatSchedule.value.length);
+    // Count unique courses (one per bundle), so lectures+labs are treated as a single course
+    const currentCourseCount = computed(() => currentSchedule.value ? currentSchedule.value.length : 0);
 
     const prevPage = () => {
         if (currentPage.value > 1) currentPage.value--;

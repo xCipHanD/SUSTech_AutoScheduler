@@ -11,7 +11,7 @@ export const TIME_SLOTS = [
 
 export const WEEK_DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
-function isExperiment(course: Course, selectedMap: Map<string, Course>): boolean {
+function isExperiment (course: Course, selectedMap: Map<string, Course>): boolean {
     const last = course.id.charAt(course.id.length - 1);
 
     if (last >= '0' && last <= '9') return false;
@@ -23,14 +23,14 @@ function isExperiment(course: Course, selectedMap: Map<string, Course>): boolean
 
 // Check conflict between time arrays
 // Returns true if NO conflict
-function checkConflict(times: string[], used: Set<string>): boolean {
+function checkConflict (times: string[], used: Set<string>): boolean {
     for (const t of times) {
         if (used.has(t)) return false;
     }
     return true;
 }
 
-export function arrangeSchedule(coursesInput: Course[]): CourseBundle[][] {
+export function arrangeSchedule (coursesInput: Course[]): CourseBundle[][] {
     const activeCourses = coursesInput.filter(c => c.active !== false);
     const selectedMap = new Map(activeCourses.map(c => [c.id, c]));
 
@@ -84,7 +84,7 @@ export function arrangeSchedule(coursesInput: Course[]): CourseBundle[][] {
     const picked: CourseBundle[] = [];
 
     // Backtracking
-    function backtrack(i: number) {
+    function backtrack (i: number) {
         if (results.length >= 100) return; // Limit results
         if (i === ks.length) {
             // copy
@@ -119,7 +119,7 @@ export function arrangeSchedule(coursesInput: Course[]): CourseBundle[][] {
             for (const c of bundle) {
                 (c.time || []).forEach((t: string) => used.delete(t));
             }
-            picked.pop();
+            // Remove only the bundle we just added
             picked.pop();
 
             if (results.length >= 100) return;

@@ -46,7 +46,7 @@
                         </div>
                         <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 5px;">{{
                             course.rwmc
-                        }}</div>
+                            }}</div>
                     </el-card>
                 </el-scrollbar>
             </el-main>
@@ -85,7 +85,7 @@
                                         <span style="font-weight: 500;">{{ course.kcmc }}</span>
                                         <span style="font-size: 12px; color: var(--el-text-color-secondary);">{{
                                             course.dgjsmc
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                     <div style="display: flex; align-items: center;">
                                         <el-button link type="danger" @click="store.toggleCourseSelection(course)">
@@ -196,7 +196,8 @@
             const courseName = (c.kcmc || '').toLowerCase();
             const teacherName = (c.dgjsmc || '').toLowerCase();
             const courseCode = (c.kcdm || '').toLowerCase();
-            const courseInfo = `${courseName} ${teacherName} ${courseCode}`;
+            const className = (c.rwmc || '').toLowerCase();
+            const courseInfo = `${courseName} ${teacherName} ${courseCode} ${className}`;
 
             // 所有关键词都必须匹配
             return keywords.every(keyword => courseInfo.includes(keyword));
