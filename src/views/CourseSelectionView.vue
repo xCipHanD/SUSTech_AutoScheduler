@@ -20,6 +20,12 @@
             <el-main style="display: flex; flex-direction: column; padding: 0;">
                 <div style="padding: 20px;">
                     <h2 style="margin-top: 0;">搜索课程</h2>
+                    <div
+                        style="margin: 6px 0 10px; font-size: 13px; color: var(--el-text-color-secondary); display: flex; gap: 16px; align-items: center;">
+                        <span>当前学期：{{ currentSemester }}</span>
+                        <span>已加载课程：{{ loadedCourseCount }} 门</span>
+                        <span>最后更新时间：{{ lastUpdated }}</span>
+                    </div>
                     <el-input v-model="searchQuery" placeholder="输入课程名或教师名(I) | Ctrl+Shift+A 全选 Ctrl+Shift+D 反选"
                         :prefix-icon="Search" clearable @input="onSearch">
                         <template #append>
@@ -123,8 +129,11 @@
 
     const router = useRouter();
     const allCourses = ref<Course[]>([]);
+    const currentSemester = '2026 春季学期';
+    const lastUpdated = '2026 Jan 11';
     const searchQuery = ref('');
     const searchResults = ref<Course[]>([]);
+    const loadedCourseCount = computed(() => allCourses.value.length);
     const generating = ref(false);
     const dragIndex = ref<number | null>(null);
 
