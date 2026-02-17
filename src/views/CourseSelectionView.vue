@@ -52,7 +52,11 @@
                             </el-empty>
                         </div>
                         <div v-else-if="searchResults.length === 0 && searchQuery" style="padding: 20px;">
-                            <el-empty description="无结果，换个关键词试试" :image-size="120" />
+                            <el-empty description="无结果，换个关键词试试" :image-size="120">
+                                <el-button type="primary" link tag="a"
+                                    href="https://github.com/xCipHanD/SUSTech_AutoScheduler/issues/new?template=missing-course-report.md"
+                                    target="_blank" rel="noopener noreferrer">没有想要的课？去反馈</el-button>
+                            </el-empty>
                         </div>
                         <el-card v-for="course in searchResults" :key="course.id" shadow="hover"
                             style="margin-bottom: 10px; cursor: pointer;"
@@ -70,7 +74,7 @@
                             </div>
                             <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 5px;">{{
                                 course.rwmc
-                                }}</div>
+                            }}</div>
                         </el-card>
                     </template>
                 </el-scrollbar>
@@ -112,7 +116,7 @@
                                         <span style="font-weight: 500;">{{ course.kcmc }}</span>
                                         <span style="font-size: 12px; color: var(--el-text-color-secondary);">{{
                                             course.dgjsmc
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                     <div style="display: flex; align-items: center;">
                                         <el-button link type="danger" @click="store.toggleCourseSelection(course)">
