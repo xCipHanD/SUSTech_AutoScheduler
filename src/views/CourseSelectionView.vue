@@ -47,8 +47,8 @@
                     <template v-else>
                         <div v-if="!searchQuery && searchResults.length === 0" style="padding: 30px 0;">
                             <el-empty description="输入关键词或点击示例开始搜索" :image-size="120">
-                                <el-button type="primary" text @click="applyExample(exampleKeywords[0])">试试“{{
-                                    exampleKeywords[0] }}”</el-button>
+                                <el-button v-if="firstExample" type="primary" text
+                                    @click="applyExample(firstExample)">试试“{{ firstExample }}”</el-button>
                             </el-empty>
                         </div>
                         <div v-else-if="searchResults.length === 0 && searchQuery" style="padding: 20px;">
@@ -70,7 +70,7 @@
                             </div>
                             <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 5px;">{{
                                 course.rwmc
-                            }}</div>
+                                }}</div>
                         </el-card>
                     </template>
                 </el-scrollbar>
@@ -91,8 +91,8 @@
                 <el-scrollbar style="flex: 1; padding: 0 10px;">
                     <div v-if="store.selectedCourses.length === 0" style="padding: 24px 12px;">
                         <el-empty description="右侧空空如也，去左侧添加课程吧" :image-size="100">
-                            <el-button type="primary" text size="small" @click="applyExample(exampleKeywords[0])">试试“{{
-                                exampleKeywords[0] }}”</el-button>
+                            <el-button v-if="firstExample" type="primary" text size="small"
+                                @click="applyExample(firstExample)">试试“{{ firstExample }}”</el-button>
                         </el-empty>
                     </div>
                     <div v-else>
@@ -112,7 +112,7 @@
                                         <span style="font-weight: 500;">{{ course.kcmc }}</span>
                                         <span style="font-size: 12px; color: var(--el-text-color-secondary);">{{
                                             course.dgjsmc
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                     <div style="display: flex; align-items: center;">
                                         <el-button link type="danger" @click="store.toggleCourseSelection(course)">
@@ -155,6 +155,7 @@
     const searchQuery = ref('');
     const searchResults = ref<Course[]>([]);
     const exampleKeywords = ['软件工程', '操作系统', '音乐赏析', '数学', '英语'];
+    const firstExample = computed(() => exampleKeywords[0] || '');
     const loading = ref(true);
     const loadedCourseCount = computed(() => allCourses.value.length);
     const generating = ref(false);
@@ -241,6 +242,7 @@
     };
 
     const applyExample = (keyword: string) => {
+        if (!keyword) return;
         searchQuery.value = keyword;
         onSearch();
     };
