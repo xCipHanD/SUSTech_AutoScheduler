@@ -17,12 +17,6 @@ If you cannot find a course or notice incorrect/incomplete information, please f
 
 ---
 
-### 🏫 School / Institution
-<!-- e.g. XX University -->
-
-### 📅 Semester
-<!-- e.g. 2025 Fall -->
-
 ### 🏛 Department / Faculty
 <!-- e.g. Computer Science -->
 
