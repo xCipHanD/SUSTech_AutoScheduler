@@ -109,7 +109,7 @@
                             </div>
                             <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 5px;">{{
                                 course.rwmc
-                                }}</div>
+                            }}</div>
                         </el-card>
                     </template>
                 </el-scrollbar>
@@ -151,7 +151,7 @@
                                         <span style="font-weight: 500;">{{ course.kcmc }}</span>
                                         <span style="font-size: 12px; color: var(--el-text-color-secondary);">{{
                                             course.dgjsmc
-                                        }}</span>
+                                            }}</span>
                                         <span
                                             style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 2px;">
                                             人数：{{ formatCapacity(course) }}
@@ -187,6 +187,7 @@
     import { useCourseData } from '../composables/useCourseData';
     import { store } from '../store/courseStore';
     import { arrangeSchedule } from '../utils/scheduleAlgo';
+    import { isLabId, getBaseCourseId, hasCatalogLab, hasSelectedLab, hasSelectedLecture } from '@/utils/courseRelation';
     import type { Course } from '../types';
 
     useMobileDetection();
@@ -380,11 +381,46 @@
         refreshCourses(true);
     };
 
+    const ensureLectureLabPairs = () => {
+        const selected = store.selectedCourses;
+        const all = allCourses.value;
+
+        for (const course of selected) {
+            const baseId = getBaseCourseId(course.id);
+            const hasLabInCatalog = hasCatalogLab(all, baseId);
+
+            // Only enforce pairing for courses that actually have lab variants in catalog
+            if (!hasLabInCatalog) continue;
+
+            const lectureSelected = hasSelectedLecture(selected, baseId);
+            const labSelected = hasSelectedLab(selected, baseId);
+
+            if (!isLabId(course.id) && !labSelected) {
+                searchQuery.value = course.kcmc;
+                onSearch();
+                ElMessage.error(`课程 ${course.kcmc} 需要至少选择一门对应的实验课`);
+                return false;
+            }
+
+            if (isLabId(course.id) && !lectureSelected) {
+                const lectureCourse = all.find(c => c.id === baseId);
+                searchQuery.value = lectureCourse?.kcmc || baseId;
+                onSearch();
+                ElMessage.error(`实验课 ${course.kcmc} 需要选择对应的理论课`);
+                return false;
+            }
+        }
+
+        return true;
+    };
+
     const handleGenerate = async () => {
         if (store.selectedCourses.length === 0) {
             ElMessage.warning('请先选择课程');
             return;
         }
+
+        if (!ensureLectureLabPairs()) return;
 
         generating.value = true;
         setTimeout(() => {

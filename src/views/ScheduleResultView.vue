@@ -111,7 +111,8 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <el-switch v-model="course.active" size="small" @change="debouncedGenerate" />
+                                    <el-switch :model-value="course.active !== false" size="small"
+                                        @change="val => handleToggleActive(course.id, !!val)" />
                                 </div>
                             </div>
                         </div>
@@ -183,6 +184,11 @@
 
     const nextPage = () => {
         if (currentPage.value < totalPages.value) currentPage.value++;
+    };
+
+    const handleToggleActive = (courseId: string, isActive: boolean) => {
+        store.toggleCourseActive(courseId, isActive);
+        debouncedGenerate();
     };
 
     const jumpPages = (direction: 'prev' | 'next') => {
