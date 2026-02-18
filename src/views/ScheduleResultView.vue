@@ -48,7 +48,7 @@
                 </div>
 
                 <!-- 课程表 -->
-                <div style="flex: 1; overflow: hidden;" ref="scheduleRef">
+                <div class="schedule-scroll" style="flex: 1; overflow: auto;" ref="scheduleRef">
                     <div v-if="!currentSchedule"
                         style="height: 100%; display: flex; justify-content: center; align-items: center; color: var(--el-text-color-secondary);">
                         <span
@@ -353,3 +353,25 @@
         }
     };
 </script>
+
+<style scoped>
+    /* Keep vertical/horizontal scrollbars consistent in the schedule area */
+    .schedule-scroll::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .schedule-scroll::-webkit-scrollbar-track {
+        background: var(--el-border-color-lighter);
+        border-radius: 6px;
+    }
+
+    .schedule-scroll::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 6px;
+    }
+
+    .schedule-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.35);
+    }
+</style>
