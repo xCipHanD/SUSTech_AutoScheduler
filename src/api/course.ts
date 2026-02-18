@@ -37,6 +37,68 @@ function parseTime (html: string): { lab: string[]; requirement: string | null }
     const blocks = Array.from(doc.querySelectorAll('p'));
     let currentSection: 'main_task' | 'lab' | null = null;
 
+    const getLinesFromTag = (tag: Element) => {
+        const ps = Array.from(tag.querySelectorAll('p'));
+        if (ps.length) return ps.map(p => (p.textContent || '').trim()).filter(Boolean);
+        return (tag.textContent || '').split('\n').map(l => l.trim()).filter(Boolean);
+    };
+
+    const pushLines = (lines: string[], section: 'main_task' | 'lab' | null) => {
+        lines.forEach(line => {
+            const weekday = /星期([一二三四五六日])/.exec(line);
+            const periods = /第(\d+)-(\d+)节/.exec(line);
+            const weekPart = /^([0-9,\-单双]+)周/.exec(line);
+            const weekdayKey = weekday?.[1];
+            const startStr = periods?.[1];
+            const endStr = periods?.[2];
+            const weekRaw = weekPart?.[1];
+            if (!weekdayKey || !startStr || !endStr || !weekRaw) return;
+
+            const dayNum = weekdayMap[weekdayKey];
+            if (!dayNum) return;
+            const startP = parseInt(startStr, 10);
+            const endP = parseInt(endStr, 10);
+            if (!Number.isFinite(startP) || !Number.isFinite(endP)) return;
+
+            const pairs: string[] = [];
+            let cur = startP;
+            while (cur <= endP) {
+                const nxt = cur + 1;
+                if (nxt <= endP) { pairs.push(periodToHex(cur) + periodToHex(nxt)); cur += 2; }
+                else { pairs.push(periodToHex(cur) + periodToHex(cur)); cur += 1; }
+            }
+
+            const shouldRecord = section === 'lab' || section === 'main_task' || section === null;
+
+            weekRaw.split(',').forEach(part => {
+                if (!part) return;
+                const m = /(\d+(?:-\d+)?)([单双]?)/.exec(part);
+                if (!m) return;
+                const range = m[1] || '';
+                const flag = m[2] || '';
+                const weeks: number[] = [];
+                if (range.includes('-')) {
+                    const [sStr, eStr] = range.split('-');
+                    const s = Number(sStr);
+                    const e = Number(eStr);
+                    if (Number.isFinite(s) && Number.isFinite(e)) {
+                        for (let w = s; w <= e; w++) weeks.push(w);
+                    }
+                } else {
+                    const v = Number(range);
+                    if (Number.isFinite(v)) weeks.push(v);
+                }
+                weeks.forEach(week => {
+                    let prefix: string;
+                    if (flag === '单') { if (week % 2 === 0) return; prefix = '1'; }
+                    else if (flag === '双') { if (week % 2 === 1) return; prefix = '2'; }
+                    else { prefix = week % 2 === 1 ? '1' : '2'; }
+                    pairs.forEach(ps => { if (shouldRecord) result.lab.push(prefix + String(dayNum) + ps); });
+                });
+            });
+        });
+    };
+
     blocks.forEach(p => {
         const text = (p.textContent || '').trim();
         if (text.startsWith('主任务')) { hasMainTask = true; currentSection = 'main_task'; return; }
@@ -46,59 +108,16 @@ function parseTime (html: string): { lab: string[]; requirement: string | null }
         if (text.includes('上课信息')) {
             const tag = p.querySelector('.ivu-tag') || p.nextElementSibling;
             if (!tag) return;
-            const lines = (tag.textContent || '').split('\n').map(l => l.trim()).filter(Boolean);
-            lines.forEach(line => {
-                const weekday = /星期([一二三四五六日])/.exec(line);
-                const periods = /第(\d+)-(\d+)节/.exec(line);
-                const weekPart = /^([0-9,\-单双]+)周/.exec(line);
-                const weekdayKey = weekday?.[1];
-                const startStr = periods?.[1];
-                const endStr = periods?.[2];
-                const weekRaw = weekPart?.[1];
-                if (!weekdayKey || !startStr || !endStr || !weekRaw) return;
-
-                const dayNum = weekdayMap[weekdayKey];
-                if (!dayNum) return;
-                const startP = parseInt(startStr, 10);
-                const endP = parseInt(endStr, 10);
-                if (!Number.isFinite(startP) || !Number.isFinite(endP)) return;
-
-                const pairs: string[] = [];
-                let cur = startP;
-                while (cur <= endP) {
-                    const nxt = cur + 1;
-                    if (nxt <= endP) { pairs.push(periodToHex(cur) + periodToHex(nxt)); cur += 2; }
-                    else { pairs.push(periodToHex(cur) + periodToHex(cur)); cur += 1; }
-                }
-
-                weekRaw.split(',').forEach(part => {
-                    if (!part) return;
-                    const m = /(\d+(?:-\d+)?)([单双]?)/.exec(part);
-                    if (!m) return;
-                    const range = m[1] || '';
-                    const flag = m[2] || '';
-                    const weeks: number[] = [];
-                    if (range.includes('-')) {
-                        const [sStr, eStr] = range.split('-');
-                        const s = Number(sStr);
-                        const e = Number(eStr);
-                        if (Number.isFinite(s) && Number.isFinite(e)) {
-                            for (let w = s; w <= e; w++) weeks.push(w);
-                        }
-                    } else {
-                        const v = Number(range);
-                        if (Number.isFinite(v)) weeks.push(v);
-                    }
-                    weeks.forEach(week => {
-                        let prefix: string;
-                        if (flag === '单') { if (week % 2 === 0) return; prefix = '1'; }
-                        else if (flag === '双') { if (week % 2 === 1) return; prefix = '2'; }
-                        else { prefix = week % 2 === 1 ? '1' : '2'; }
-                        pairs.forEach(ps => { if (currentSection === 'lab') result.lab.push(prefix + String(dayNum) + ps); });
-                    });
-                });
-            });
+            const lines = getLinesFromTag(tag);
+            pushLines(lines, currentSection);
         }
+    });
+
+    // Fallback: parse any ivu-tag blocks even if there's no preceding "上课信息" marker
+    const looseTags = Array.from(doc.querySelectorAll('.ivu-tag')); // safe, small DOM
+    looseTags.forEach(tag => {
+        const lines = getLinesFromTag(tag);
+        pushLines(lines, currentSection);
     });
 
     const seen = new Set<string>();
