@@ -3,10 +3,12 @@ import type { Course } from '@/types';
 const INJECT_SOURCE = 'AutoSchedulerInject';
 const WEB_SOURCE = 'AutoSchedulerWeb';
 const CACHE_KEY = 'autoSchedulerCoursesCacheV1';
-const DEFAULT_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+const DEFAULT_MAX_AGE_MS = 1 * 60 * 1000; // 1 minute
 const STATIC_FALLBACK_UPDATED_AT = Date.parse('2026-01-11T00:00:00+08:00');
 
 let cachedCourses: Course[] | null = null;
+let cachedUpdatedAt: number | null = null;
+let cachedCachedAt: number | null = null;
 let proxyListenerReady = false;
 let injectHello = false;
 const helloWaiters: Array<(v: boolean) => void> = [];
@@ -117,6 +119,8 @@ function mapCoursesFromRaw (raw: any[]): Course[] {
         const parsed = parseTime(kcxx);
         if (!parsed.lab.length) return;
         seen.add(id);
+        const enrolled = Number.isFinite(Number(item.yxzrs)) ? Number(item.yxzrs) : null;
+        const capacity = Number.isFinite(Number(item.bksrl)) ? Number(item.bksrl) : null;
         lessons.push({
             id,
             kcdm: item.kcdm,
@@ -129,6 +133,8 @@ function mapCoursesFromRaw (raw: any[]): Course[] {
             rwmc: item.rwmc,
             time: parsed.lab,
             info: parsed.requirement,
+            yxzrs: enrolled,
+            bksrl: capacity,
             active: true,
         });
     });
@@ -136,7 +142,13 @@ function mapCoursesFromRaw (raw: any[]): Course[] {
 }
 
 function mapCourses (raw: any[]): Course[] {
-    return raw.map((c: any) => ({ ...c, active: true }));
+    return raw.map((c: any) => ({
+        ...c,
+        // Ensure numeric types when static data already contains these fields
+        yxzrs: Number.isFinite(Number(c?.yxzrs)) ? Number(c.yxzrs) : c?.yxzrs ?? null,
+        bksrl: Number.isFinite(Number(c?.bksrl)) ? Number(c.bksrl) : c?.bksrl ?? null,
+        active: true
+    }));
 }
 
 function loadCache (): CachedPayload | null {
@@ -299,9 +311,13 @@ async function fetchStatic (): Promise<{ courses: Course[]; updatedAt: number }>
 export async function fetchCourses (options?: { forceRefresh?: boolean; maxAgeMs?: number }): Promise<FetchCoursesResult> {
     const maxAgeMs = options?.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
     const now = Date.now();
+    const isFresh = (ageBase?: number | null) => ageBase !== undefined && ageBase !== null && now - ageBase <= maxAgeMs;
 
     if (!options?.forceRefresh && cachedCourses) {
-        return { courses: cachedCourses, updatedAt: now, fromCache: true };
+        const ageBase = cachedCachedAt ?? cachedUpdatedAt;
+        if (isFresh(ageBase)) {
+            return { courses: cachedCourses, updatedAt: cachedUpdatedAt ?? ageBase ?? now, fromCache: true };
+        }
     }
 
     if (!options?.forceRefresh) {
@@ -309,6 +325,8 @@ export async function fetchCourses (options?: { forceRefresh?: boolean; maxAgeMs
         const cachedAgeBase = cached?.cachedAt ?? cached?.updatedAt;
         if (cached && cachedAgeBase && now - cachedAgeBase <= maxAgeMs && cached.courses.length) {
             cachedCourses = cached.courses;
+            cachedUpdatedAt = cached.updatedAt;
+            cachedCachedAt = cached.cachedAt ?? cached.updatedAt;
             return { courses: cached.courses, updatedAt: cached.updatedAt, fromCache: true };
         }
     }
@@ -316,19 +334,25 @@ export async function fetchCourses (options?: { forceRefresh?: boolean; maxAgeMs
     const injectCourses = await fetchViaInject().catch(() => null);
     if (injectCourses && injectCourses.length) {
         cachedCourses = injectCourses;
-        const payload: CachedPayload = { courses: injectCourses, updatedAt: now, cachedAt: now };
+        cachedUpdatedAt = now;
+        cachedCachedAt = now;
+        const payload: CachedPayload = { courses: injectCourses, updatedAt: cachedUpdatedAt, cachedAt: cachedCachedAt };
         saveCache(payload);
-        return { courses: injectCourses, updatedAt: now, fromCache: false };
+        return { courses: injectCourses, updatedAt: cachedUpdatedAt, fromCache: false };
     }
 
     try {
         const { courses, updatedAt } = await fetchStatic();
         cachedCourses = courses;
-        const payload: CachedPayload = { courses, updatedAt, cachedAt: now };
+        cachedUpdatedAt = updatedAt;
+        cachedCachedAt = now;
+        const payload: CachedPayload = { courses, updatedAt: cachedUpdatedAt, cachedAt: cachedCachedAt };
         saveCache(payload);
-        return { courses, updatedAt, fromCache: false };
+        return { courses, updatedAt: cachedUpdatedAt, fromCache: false };
     } catch (e) {
         console.error(e);
-        return { courses: [], updatedAt: now, fromCache: false };
+        cachedUpdatedAt = now;
+        cachedCachedAt = now;
+        return { courses: [], updatedAt: cachedUpdatedAt, fromCache: false };
     }
 }

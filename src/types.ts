@@ -10,6 +10,9 @@ export interface Course {
     rwmc: string; // Task Name (Class Name)
     time: string[]; // Time codes, e.g., ["1712"]
     info: string | null;
+    // Real-time capacity info (plugin-only; may be missing in static mode)
+    yxzrs?: number | null; // Enrolled count
+    bksrl?: number | null; // Undergraduate capacity
     // UI state
     active?: boolean; // If false, ignored in scheduling (user can disable specific classes of a course?)
 }

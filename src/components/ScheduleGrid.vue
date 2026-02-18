@@ -40,6 +40,18 @@
                                                 scope.$index)!.dgjsmc }}</div>
                                     <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">{{ getCourse(1, index +
                                         1, scope.$index)!.skyymc }}</div>
+                                    <div
+                                        style="position: absolute; top: 6px; right: 6px; display: flex; align-items: center; font-size: 10px;">
+                                        <span :style="{
+                                            padding: '2px 6px',
+                                            borderRadius: '10px',
+                                            background: 'rgba(0, 0, 0, 0.35)',
+                                            color: '#fff',
+                                            lineHeight: 1.2,
+                                        }">
+                                            {{ compactCapacityText(getCourse(1, index + 1, scope.$index)!) }}
+                                        </span>
+                                    </div>
                                 </div>
                             </template>
                         </el-table-column>
@@ -85,6 +97,18 @@
                                                 scope.$index)!.dgjsmc }}</div>
                                     <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">{{ getCourse(2, index +
                                         1, scope.$index)!.skyymc }}</div>
+                                    <div
+                                        style="position: absolute; top: 6px; right: 6px; display: flex; align-items: center; font-size: 10px;">
+                                        <span :style="{
+                                            padding: '2px 6px',
+                                            borderRadius: '10px',
+                                            background: 'rgba(0, 0, 0, 0.35)',
+                                            color: '#fff',
+                                            lineHeight: 1.2,
+                                        }">
+                                            {{ compactCapacityText(getCourse(2, index + 1, scope.$index)!) }}
+                                        </span>
+                                    </div>
                                 </div>
                             </template>
                         </el-table-column>
@@ -151,7 +175,7 @@
     // Use color manager (make it reactive)
     const colorManager = reactive(new CourseColorManager());
 
-    function getCourseColor(id: string) {
+    function getCourseColor (id: string) {
         const color = colorManager.getColor(id);
         // 将十六进制颜色转换为 rgba 格式，添加 0.333 的透明度
         const hex = color.replace('#', '');
@@ -161,11 +185,11 @@
         return `rgba(${r}, ${g}, ${b}, 0.333)`;
     }
 
-    function changeColor(id: string) {
+    function changeColor (id: string) {
         colorManager.assignRandomColor(id);
     }
 
-    function getCourseStyle() {
+    function getCourseStyle () {
         return {
             color: '#fff',
             height: '100%',
@@ -177,9 +201,22 @@
     }
 
     // Helper to find course at specific time
-    function getCourse(week: number, day: number, slotIndex: number): Course | undefined {
+    function getCourse (week: number, day: number, slotIndex: number): Course | undefined {
         return findCourseAtTime(props.schedule, week, day, slotIndex);
     }
+
+    const hasFullCapacity = (course: Course) => typeof course.yxzrs === 'number' && typeof course.bksrl === 'number' && (course.bksrl ?? 0) > 0;
+
+    const compactCapacityText = (course: Course) => {
+        if (hasFullCapacity(course)) {
+            const enrolled = course.yxzrs ?? 0;
+            const cap = course.bksrl ?? 0;
+            if (enrolled > cap) return `${cap}/${enrolled}`; // highlight overfull as reversed hint
+            return `${enrolled}/${cap}`;
+        }
+        if (typeof course.yxzrs === 'number') return `${course.yxzrs}/—`;
+        return '容量?';
+    };
 
     // Watch for schedule changes to clear colors or re-assign if needed
     watch(() => props.schedule, () => {

@@ -30,6 +30,26 @@ function checkConflict (times: string[], used: Set<string>): boolean {
     return true;
 }
 
+function capacityScore (schedule: CourseBundle[]): { over: number; pressure: number } {
+    let over = 0;
+    let pressure = 0;
+
+    schedule.forEach(bundle => {
+        bundle.forEach(course => {
+            if (typeof course.yxzrs !== 'number' || typeof course.bksrl !== 'number' || (course.bksrl ?? 0) <= 0) return;
+            const enrolled = course.yxzrs || 0;
+            const cap = course.bksrl || 0;
+            if (enrolled > cap) {
+                over += enrolled - cap;
+            }
+            const ratio = cap > 0 ? enrolled / cap : 0;
+            if (ratio >= 0.9) pressure += ratio;
+        });
+    });
+
+    return { over, pressure };
+}
+
 export function arrangeSchedule (coursesInput: Course[]): CourseBundle[][] {
     const activeCourses = coursesInput.filter(c => c.active !== false);
     const selectedMap = new Map(activeCourses.map(c => [c.id, c]));
@@ -67,6 +87,16 @@ export function arrangeSchedule (coursesInput: Course[]): CourseBundle[][] {
 
     const ks = Object.keys(bundlesByName);
     if (ks.length === 0) return [];
+
+    const sortResultsByCapacity = () => {
+        results.sort((a, b) => {
+            const sa = capacityScore(a);
+            const sb = capacityScore(b);
+            if (sa.over !== sb.over) return sa.over - sb.over;
+            if (sa.pressure !== sb.pressure) return sa.pressure - sb.pressure;
+            return a.length - b.length;
+        });
+    };
 
     ks.forEach(k => {
         const list = bundlesByName[k];
@@ -180,6 +210,10 @@ export function arrangeSchedule (coursesInput: Course[]): CourseBundle[][] {
             dfsWithSkips(0, s, new Set(), []);
             if (results.length > 0) break;
         }
+    }
+
+    if (results.length > 0) {
+        sortResultsByCapacity();
     }
 
     return results;

@@ -99,9 +99,17 @@
                                 <span>Code: {{ course.kcdm }}</span>
                                 <span>{{ course.dgjsmc }}</span>
                             </div>
+                            <div
+                                style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span>人数：{{ formatCapacity(course) }}</span>
+                                <el-tag v-if="hasFullCapacity(course)" size="small" effect="plain"
+                                    :type="capacityStatusType(course)">
+                                    {{ capacityTagLabel(course) }}
+                                </el-tag>
+                            </div>
                             <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 5px;">{{
                                 course.rwmc
-                                }}</div>
+                            }}</div>
                         </el-card>
                     </template>
                 </el-scrollbar>
@@ -143,7 +151,11 @@
                                         <span style="font-weight: 500;">{{ course.kcmc }}</span>
                                         <span style="font-size: 12px; color: var(--el-text-color-secondary);">{{
                                             course.dgjsmc
-                                        }}</span>
+                                            }}</span>
+                                        <span
+                                            style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 2px;">
+                                            人数：{{ formatCapacity(course) }}
+                                        </span>
                                     </div>
                                     <div style="display: flex; align-items: center;">
                                         <el-button link type="danger" @click="store.toggleCourseSelection(course)">
@@ -172,27 +184,23 @@
     import { ElMessage } from 'element-plus';
     import { Search, Rank, QuestionFilled, HomeFilled, Close, Loading, Refresh } from '@element-plus/icons-vue';
     import { useMobileDetection } from '../composables/useMobileDetection';
+    import { useCourseData } from '../composables/useCourseData';
     import { store } from '../store/courseStore';
-    import { fetchCourses } from '../api/course';
     import { arrangeSchedule } from '../utils/scheduleAlgo';
     import type { Course } from '../types';
 
     useMobileDetection();
 
     const router = useRouter();
-    const allCourses = ref<Course[]>([]);
+    const { courses: allCourses, lastUpdatedTs, isUpdating, loading, loadedCourseCount, refreshCourses, startAutoRefresh } = useCourseData();
     const currentSemester = '2026 春季学期';
-    const lastUpdatedTs = ref<number | null>(null);
     const searchQuery = ref('');
     const searchResults = ref<Course[]>([]);
     const exampleKeywords = ['软件工程', '操作系统', '音乐赏析', '数学', '英语'];
     const firstExample = computed(() => exampleKeywords[0] || '');
-    const loading = ref(true);
-    const loadedCourseCount = computed(() => allCourses.value.length);
     const generating = ref(false);
     const dragIndex = ref<number | null>(null);
     const injectConnected = ref(false);
-    const isUpdating = ref(false);
     const statusTagType = computed(() => {
         if (isUpdating.value) return 'info';
         return injectConnected.value ? 'success' : 'warning';
@@ -208,14 +216,40 @@
         return `${mm}-${dd} ${hh}:${mi}`;
     });
 
+    const hasFullCapacity = (course: Course) => typeof course.yxzrs === 'number' && typeof course.bksrl === 'number' && (course.bksrl ?? 0) > 0;
+    const formatCapacity = (course: Course) => {
+        const enrolled = course.yxzrs;
+        const cap = course.bksrl;
+        if (hasFullCapacity(course)) {
+            const ratio = cap ? Math.round(((enrolled ?? 0) / cap) * 100) : null;
+            return `${enrolled ?? 0}/${cap}${ratio !== null ? ` (${ratio}%)` : ''}`;
+        }
+        if (typeof enrolled === 'number' && enrolled >= 0) return `${enrolled}/—`;
+        return '容量未知';
+    };
+    const capacityStatusType = (course: Course) => {
+        if (!hasFullCapacity(course)) return 'info';
+        const enrolled = course.yxzrs ?? 0;
+        const cap = course.bksrl ?? 0;
+        if (enrolled > cap) return 'danger';
+        if (cap > 0 && enrolled / cap >= 0.9) return 'warning';
+        return 'success';
+    };
+    const capacityTagLabel = (course: Course) => {
+        if (!hasFullCapacity(course)) return '容量未知';
+        const enrolled = course.yxzrs ?? 0;
+        const cap = course.bksrl ?? 0;
+        if (enrolled > cap) return `超额 ${enrolled - cap}`;
+        if (cap - enrolled <= 5) return '接近满额';
+        return '容量充足';
+    };
+
     onMounted(() => {
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('message', onMessageFromInject);
         sendPingToInject();
-        // Defer course fetching to avoid blocking initial render
-        setTimeout(() => {
-            refreshCourses();
-        }, 0);
+        // Start shared auto-refresh (includes immediate run)
+        startAutoRefresh();
     });
 
     onUnmounted(() => {
@@ -327,19 +361,6 @@
             targetWin.postMessage({ source: 'AutoSchedulerWeb', type: 'ping' }, '*');
         } catch (e) {
             console.error('ping inject failed', e);
-        }
-    };
-
-    const refreshCourses = async (force = false) => {
-        isUpdating.value = true;
-        try {
-            const { courses, updatedAt } = await fetchCourses({ forceRefresh: force });
-            allCourses.value = courses;
-            lastUpdatedTs.value = updatedAt;
-            onSearch();
-        } finally {
-            loading.value = false;
-            isUpdating.value = false;
         }
     };
 

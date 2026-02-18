@@ -101,6 +101,14 @@
                                         :title="course.kcmc">{{ course.kcmc }}</span>
                                     <span style="font-size: 12px; color: var(--el-text-color-secondary);">{{
                                         course.dgjsmc }}</span>
+                                    <div
+                                        style="font-size: 12px; color: var(--el-text-color-secondary); display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                                        <span>人数：{{ formatCapacity(course) }}</span>
+                                        <el-tag v-if="hasFullCapacity(course)" size="small" effect="plain"
+                                            :type="capacityStatusType(course)">
+                                            {{ capacityStatusType(course) === 'danger' ? '超额' : '实时' }}
+                                        </el-tag>
+                                    </div>
                                 </div>
                                 <div>
                                     <el-switch v-model="course.active" size="small" @change="debouncedGenerate" />
@@ -117,7 +125,9 @@
 <script setup lang="ts">
     import { ElMessage } from 'element-plus';
     import { ArrowLeft, ArrowRight, Rank, QuestionFilled, Download, Document, Calendar } from '@element-plus/icons-vue';
+    import type { Course } from '@/types';
     import { useMobileDetection } from '../composables/useMobileDetection';
+    import { useCourseData } from '../composables/useCourseData';
 
     useMobileDetection();
     import { store } from '../store/courseStore';
@@ -125,6 +135,8 @@
     import html2canvas from 'html2canvas';
     import { arrangeSchedule } from '../utils/scheduleAlgo';
     import { exportToICS, downloadICS } from '@/utils/icsExporter';
+
+    const { startAutoRefresh } = useCourseData();
 
     const router = useRouter();
     const scheduleRef = ref<HTMLElement | null>(null);
@@ -144,6 +156,26 @@
 
     // Count unique courses (one per bundle), so lectures+labs are treated as a single course
     const currentCourseCount = computed(() => currentSchedule.value ? currentSchedule.value.length : 0);
+
+    const hasFullCapacity = (course: Course) => typeof course.yxzrs === 'number' && typeof course.bksrl === 'number' && (course.bksrl ?? 0) > 0;
+    const formatCapacity = (course: Course) => {
+        const enrolled = course.yxzrs;
+        const cap = course.bksrl;
+        if (hasFullCapacity(course)) {
+            const ratio = cap ? Math.round(((enrolled ?? 0) / cap) * 100) : null;
+            return `${enrolled ?? 0}/${cap}${ratio !== null ? ` (${ratio}%)` : ''}`;
+        }
+        if (typeof enrolled === 'number' && enrolled >= 0) return `${enrolled}/—`;
+        return '容量未知';
+    };
+    const capacityStatusType = (course: Course) => {
+        if (!hasFullCapacity(course)) return 'info';
+        const enrolled = course.yxzrs ?? 0;
+        const cap = course.bksrl ?? 0;
+        if (enrolled > cap) return 'danger';
+        if (cap > 0 && enrolled / cap >= 0.9) return 'warning';
+        return 'success';
+    };
 
     const prevPage = () => {
         if (currentPage.value > 1) currentPage.value--;
@@ -236,6 +268,11 @@
     };
 
     onMounted(() => {
+        // Start shared auto-refresh (includes immediate run) to keep capacity/time fresh and re-schedule when data changes
+        startAutoRefresh(30_000, () => {
+            debouncedGenerate();
+        });
+
         // If results are empty (e.g. reload), try generate if courses exist
         if (store.scheduleResults.length === 0 && store.selectedCourses.length > 0) {
             triggerGenerate();
