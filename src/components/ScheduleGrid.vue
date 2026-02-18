@@ -211,7 +211,6 @@
         if (hasFullCapacity(course)) {
             const enrolled = course.yxzrs ?? 0;
             const cap = course.bksrl ?? 0;
-            if (enrolled > cap) return `${cap}/${enrolled}`; // highlight overfull as reversed hint
             return `${enrolled}/${cap}`;
         }
         if (typeof course.yxzrs === 'number') return `${course.yxzrs}/—`;

@@ -109,7 +109,7 @@
                             </div>
                             <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 5px;">{{
                                 course.rwmc
-                            }}</div>
+                                }}</div>
                         </el-card>
                     </template>
                 </el-scrollbar>
@@ -151,7 +151,7 @@
                                         <span style="font-weight: 500;">{{ course.kcmc }}</span>
                                         <span style="font-size: 12px; color: var(--el-text-color-secondary);">{{
                                             course.dgjsmc
-                                            }}</span>
+                                        }}</span>
                                         <span
                                             style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 2px;">
                                             人数：{{ formatCapacity(course) }}
@@ -239,7 +239,7 @@
         if (!hasFullCapacity(course)) return '容量未知';
         const enrolled = course.yxzrs ?? 0;
         const cap = course.bksrl ?? 0;
-        if (enrolled > cap) return `超额 ${enrolled - cap}`;
+        if (enrolled > cap) return '超额';
         if (cap - enrolled <= 5) return '接近满额';
         return '容量充足';
     };
