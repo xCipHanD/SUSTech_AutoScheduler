@@ -30,7 +30,34 @@
                         style="margin: 6px 0 10px; font-size: 12px; color: var(--el-text-color-secondary); display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                         <span>当前学期：{{ currentSemester }}</span>
                         <span>已加载课程：{{ loadedCourseCount }} 门</span>
-                        <span>更新：{{ lastUpdated }}</span>
+                        <span>上次更新：{{ lastUpdated }}</span>
+                        <el-tag :type="statusTagType" size="small" effect="plain" :disable-transitions="true"
+                            @click="handleStatusClick"
+                            style="white-space: nowrap; flex-shrink: 0; display: inline-flex; align-items: center; cursor: pointer; flex-wrap: nowrap;">
+                            <span class="status-tag-content">
+                                <span>{{ isUpdating ? '同步课程中' : `TIS：${injectConnected ? '正常' : '未连接'}` }}</span>
+                                <el-icon v-if="isUpdating" class="is-loading" style="margin-left: 2px;">
+                                    <Loading />
+                                </el-icon>
+                                <el-tooltip v-if="injectConnected && !isUpdating" content="重新同步课程" placement="top">
+                                    <el-button link size="small" class="status-icon-btn"
+                                        @click.stop="handleReloadClick">
+                                        <el-icon>
+                                            <Refresh />
+                                        </el-icon>
+                                    </el-button>
+                                </el-tooltip>
+                                <el-tooltip v-else-if="!injectConnected && !isUpdating" content="查看互联帮助"
+                                    placement="top">
+                                    <el-button link size="small" class="status-icon-btn"
+                                        @click.stop="handleHelpIconClick">
+                                        <el-icon>
+                                            <QuestionFilled />
+                                        </el-icon>
+                                    </el-button>
+                                </el-tooltip>
+                            </span>
+                        </el-tag>
                     </div>
                 </div>
                 <el-scrollbar style="flex: 1; padding: 0 20px;">
@@ -74,7 +101,7 @@
                             </div>
                             <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 5px;">{{
                                 course.rwmc
-                            }}</div>
+                                }}</div>
                         </el-card>
                     </template>
                 </el-scrollbar>
@@ -116,7 +143,7 @@
                                         <span style="font-weight: 500;">{{ course.kcmc }}</span>
                                         <span style="font-size: 12px; color: var(--el-text-color-secondary);">{{
                                             course.dgjsmc
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                     <div style="display: flex; align-items: center;">
                                         <el-button link type="danger" @click="store.toggleCourseSelection(course)">
@@ -143,7 +170,7 @@
 
 <script setup lang="ts">
     import { ElMessage } from 'element-plus';
-    import { Search, Rank, QuestionFilled, HomeFilled, Close } from '@element-plus/icons-vue';
+    import { Search, Rank, QuestionFilled, HomeFilled, Close, Loading, Refresh } from '@element-plus/icons-vue';
     import { useMobileDetection } from '../composables/useMobileDetection';
     import { store } from '../store/courseStore';
     import { fetchCourses } from '../api/course';
@@ -155,7 +182,7 @@
     const router = useRouter();
     const allCourses = ref<Course[]>([]);
     const currentSemester = '2026 春季学期';
-    const lastUpdated = '2026-01-11';
+    const lastUpdatedTs = ref<number | null>(null);
     const searchQuery = ref('');
     const searchResults = ref<Course[]>([]);
     const exampleKeywords = ['软件工程', '操作系统', '音乐赏析', '数学', '英语'];
@@ -164,18 +191,36 @@
     const loadedCourseCount = computed(() => allCourses.value.length);
     const generating = ref(false);
     const dragIndex = ref<number | null>(null);
+    const injectConnected = ref(false);
+    const isUpdating = ref(false);
+    const statusTagType = computed(() => {
+        if (isUpdating.value) return 'info';
+        return injectConnected.value ? 'success' : 'warning';
+    });
+    const helpAnchor = 'inject-help';
+    const lastUpdated = computed(() => {
+        if (!lastUpdatedTs.value) return '---';
+        const d = new Date(lastUpdatedTs.value);
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mi = String(d.getMinutes()).padStart(2, '0');
+        return `${mm}-${dd} ${hh}:${mi}`;
+    });
 
-    onMounted(async () => {
-        try {
-            allCourses.value = await fetchCourses();
-        } finally {
-            loading.value = false;
-        }
+    onMounted(() => {
         window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('message', onMessageFromInject);
+        sendPingToInject();
+        // Defer course fetching to avoid blocking initial render
+        setTimeout(() => {
+            refreshCourses();
+        }, 0);
     });
 
     onUnmounted(() => {
         window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('message', onMessageFromInject);
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -268,6 +313,52 @@
         store.selectedCourses.splice(0, store.selectedCourses.length);
     };
 
+    const onMessageFromInject = (ev: MessageEvent) => {
+        const data: any = ev.data;
+        if (!data || data.source !== 'AutoSchedulerInject') return;
+        if (data.type === 'hello' || data.type === 'proxyResult') {
+            injectConnected.value = true;
+        }
+    };
+
+    const sendPingToInject = () => {
+        try {
+            const targetWin = window.parent && window.parent !== window ? window.parent : window;
+            targetWin.postMessage({ source: 'AutoSchedulerWeb', type: 'ping' }, '*');
+        } catch (e) {
+            console.error('ping inject failed', e);
+        }
+    };
+
+    const refreshCourses = async (force = false) => {
+        isUpdating.value = true;
+        try {
+            const { courses, updatedAt } = await fetchCourses({ forceRefresh: force });
+            allCourses.value = courses;
+            lastUpdatedTs.value = updatedAt;
+            onSearch();
+        } finally {
+            loading.value = false;
+            isUpdating.value = false;
+        }
+    };
+
+    const handleStatusClick = () => {
+        if (isUpdating.value) return;
+        if (!injectConnected.value) {
+            sendPingToInject();
+        }
+    };
+
+    const handleHelpIconClick = () => {
+        router.push({ path: '/help', query: { section: helpAnchor } });
+    };
+
+    const handleReloadClick = () => {
+        if (isUpdating.value) return;
+        refreshCourses(true);
+    };
+
     const handleGenerate = async () => {
         if (store.selectedCourses.length === 0) {
             ElMessage.warning('请先选择课程');
@@ -294,3 +385,21 @@
         }, 100);
     };
 </script>
+
+<style scoped>
+    .status-tag-content {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: nowrap;
+    }
+
+    .status-icon-btn {
+        padding: 0;
+        color: var(--el-text-color-secondary);
+        display: inline-flex;
+        align-items: center;
+        line-height: 1;
+        height: auto;
+    }
+</style>

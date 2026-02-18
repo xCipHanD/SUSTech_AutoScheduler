@@ -67,6 +67,22 @@
                     </li>
                 </ol>
 
+                <h2 id="inject-help">TIS 互联说明</h2>
+                <p>为避免频繁手工导出课程信息，我们通过浏览器注入脚本直接调用教务系统接口并把结果转发给本页面。状态标签在选课页右上方显示当前互联状态；需要安装或查看脚本，请点击 <el-link
+                        type="primary" @click="showTisDialog = true">inject.js</el-link>。</p>
+                <ul>
+                    <li><strong>TIS：正常</strong> — 已成功收到注入脚本的握手，点击标签旁的刷新图标可强制同步课程。</li>
+                    <li><strong>TIS：未连接</strong> — 页面未收到注入脚本的消息，点击问号图标查看本说明，点击状态标签会再次尝试握手。</li>
+                </ul>
+                <p>如果一直处于“未连接”，请按下列步骤排查：</p>
+                <ol>
+                    <li>确认已安装并启用浏览器插件/油猴脚本，或在 TIS 页面通过开发者工具手动注入 <code>inject.js</code>。</li>
+                    <li>确保在教务系统主页面打开本应用（即在 TIS 的 iframe 中），而不是直接访问 c.x-d.fun。</li>
+                    <li>登录教务系统后再刷新本页，避免接口因未登录被拦截。</li>
+                    <li>如仍无效，按 F12 打开控制台，检查是否有跨域/权限报错，并向我们反馈。</li>
+                </ol>
+                <p>已连接时点击状态标签会立即发起一次“同步课程”，期间标签显示“同步课程中”，同步完成后更新时间会更新到分钟。</p>
+
                 <h2>快捷键</h2>
                 <ul>
                     <li>在搜索页：I 聚焦搜索框，Enter 生成课表。</li>
@@ -86,13 +102,43 @@
                     <li>项目地址：<a href="https://github.com/xCipHanD/SUSTech_AutoScheduler" target="_blank"
                             rel="noopener noreferrer">https://github.com/xCipHanD/SUSTech_AutoScheduler</a></li>
                 </ul>
+
+                <TisPluginDialog v-model="showTisDialog" />
             </div>
         </el-main>
     </el-container>
 </template>
 
 <script setup lang="ts">
+    import { nextTick, onMounted, ref, watch } from 'vue';
+    import { useRoute } from 'vue-router';
     import { useMobileDetection } from '../composables/useMobileDetection';
+    import TisPluginDialog from '@/components/TisPluginDialog.vue';
 
     useMobileDetection();
+
+    const route = useRoute();
+    const showTisDialog = ref(false);
+
+    const scrollToSection = (sectionId: string) => {
+        nextTick(() => {
+            const el = document.getElementById(sectionId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    };
+
+    const handleSectionScroll = () => {
+        const section = route.query.section;
+        if (typeof section === 'string') {
+            scrollToSection(section);
+        }
+    };
+
+    onMounted(handleSectionScroll);
+
+    watch(() => route.query.section, () => {
+        handleSectionScroll();
+    });
 </script>
