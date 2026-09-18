@@ -15,6 +15,7 @@
                         <QuestionFilled />
                     </el-icon>
                 </el-button>
+                <ThemeToggle />
                 <GitHubStarButton />
             </div>
         </el-header>

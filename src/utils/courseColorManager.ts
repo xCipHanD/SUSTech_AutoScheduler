@@ -76,3 +76,66 @@ export class CourseColorManager {
         return [...this.presetColors];
     }
 }
+
+export interface Rgb {
+    r: number;
+    g: number;
+    b: number;
+}
+
+/**
+ * 将十六进制颜色解析为 RGB（支持 #rgb 与 #rrggbb）
+ */
+export function hexToRgb(hex: string): Rgb {
+    let value = hex.replace('#', '').trim();
+    if (value.length === 3) {
+        value = value.split('').map((c) => c + c).join('');
+    }
+    const int = parseInt(value, 16);
+    return {
+        r: (int >> 16) & 0xff,
+        g: (int >> 8) & 0xff,
+        b: int & 0xff
+    };
+}
+
+/**
+ * 将颜色按 alpha 叠加到不透明底色上，返回合成后的实色
+ */
+export function compositeColor(hex: string, alpha: number, base: Rgb): Rgb {
+    const { r, g, b } = hexToRgb(hex);
+    return {
+        r: Math.round(r * alpha + base.r * (1 - alpha)),
+        g: Math.round(g * alpha + base.g * (1 - alpha)),
+        b: Math.round(b * alpha + base.b * (1 - alpha))
+    };
+}
+
+/**
+ * 计算 sRGB 相对亮度（0 黑 - 1 白）
+ */
+export function relativeLuminance({ r, g, b }: Rgb): number {
+    const channel = (c: number) => {
+        const v = c / 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+/**
+ * 根据背景色亮度选择可读的深色/浅色文字
+ */
+export function readableTextColor(bg: Rgb): string {
+    return relativeLuminance(bg) > 0.45 ? '#1f2937' : '#ffffff';
+}
+
+/**
+ * 计算两色之间的 WCAG 对比度（1 - 21）
+ */
+export function contrastRatio(a: Rgb, b: Rgb): number {
+    const la = relativeLuminance(a);
+    const lb = relativeLuminance(b);
+    const lighter = Math.max(la, lb);
+    const darker = Math.min(la, lb);
+    return (lighter + 0.05) / (darker + 0.05);
+}

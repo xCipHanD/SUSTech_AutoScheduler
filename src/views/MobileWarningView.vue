@@ -36,6 +36,10 @@
             </div>
         </el-card>
     </el-container>
+
+    <div style="position: fixed; top: 20px; right: 20px; z-index: 10;">
+        <ThemeToggle />
+    </div>
 </template>
 
 <script setup lang="ts">

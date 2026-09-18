@@ -6,19 +6,9 @@
 </template>
 
 <script setup lang="ts">
-    const updateTheme = () => {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.classList.toggle('dark', isDark);
-    };
+    import { themeStore } from '@/store/themeStore';
 
-    onMounted(() => {
-        updateTheme();
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
-    });
-
-    onUnmounted(() => {
-        window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', updateTheme);
-    });
+    themeStore.initTheme();
 </script>
 
 <style>

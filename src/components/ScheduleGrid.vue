@@ -27,20 +27,20 @@
                             min-width="120">
                             <template #default="scope">
                                 <div v-if="getCourse(1, index + 1, scope.$index)"
-                                    :style="{ ...getCourseStyle(), position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: '8px' }"
+                                    :style="{ ...getCourseStyle(getCourse(1, index + 1, scope.$index)!.id), position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: '8px' }"
                                     @click="changeColor(getCourse(1, index + 1, scope.$index)!.id)"
                                     @contextmenu.prevent="showContextMenu($event, getCourse(1, index + 1, scope.$index)!, 1, index + 1, scope.$index)">
                                     <div
                                         style="font-size: 13px; font-weight: bold; line-height: 1.4; margin-bottom: 4px;">
                                         {{ getCourse(1, index + 1, scope.$index)!.kcmc }}</div>
                                     <div
-                                        style="font-size: 12px; opacity: 0.95; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        style="font-size: 12px; opacity: 0.95; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                         {{
                                             getCourse(1, index + 1,
                                                 scope.$index)!.dgjsmc }}</div>
                                     <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">{{ getCourse(1, index +
                                         1, scope.$index)!.skyymc }}</div>
-                                    <div
+                                    <div v-if="hasCapacityInfo(getCourse(1, index + 1, scope.$index)!)"
                                         style="position: absolute; top: 6px; right: 6px; display: flex; align-items: center; font-size: 10px;">
                                         <span :style="{
                                             padding: '2px 6px',
@@ -84,20 +84,20 @@
                             min-width="120">
                             <template #default="scope">
                                 <div v-if="getCourse(2, index + 1, scope.$index)"
-                                    :style="{ ...getCourseStyle(), position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: '8px' }"
+                                    :style="{ ...getCourseStyle(getCourse(2, index + 1, scope.$index)!.id), position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: '8px' }"
                                     @click="changeColor(getCourse(2, index + 1, scope.$index)!.id)"
                                     @contextmenu.prevent="showContextMenu($event, getCourse(2, index + 1, scope.$index)!, 2, index + 1, scope.$index)">
                                     <div
                                         style="font-size: 13px; font-weight: bold; line-height: 1.4; margin-bottom: 4px;">
                                         {{ getCourse(2, index + 1, scope.$index)!.kcmc }}</div>
                                     <div
-                                        style="font-size: 12px; opacity: 0.95; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        style="font-size: 12px; opacity: 0.95; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                         {{
                                             getCourse(2, index + 1,
                                                 scope.$index)!.dgjsmc }}</div>
                                     <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">{{ getCourse(2, index +
                                         1, scope.$index)!.skyymc }}</div>
-                                    <div
+                                    <div v-if="hasCapacityInfo(getCourse(2, index + 1, scope.$index)!)"
                                         style="position: absolute; top: 6px; right: 6px; display: flex; align-items: center; font-size: 10px;">
                                         <span :style="{
                                             padding: '2px 6px',
@@ -146,9 +146,10 @@
     import type { Course, CourseBundle } from '@/types';
     import { TIME_SLOTS, WEEK_DAYS } from '@/utils/scheduleAlgo';
     import { store } from '../store/courseStore';
+    import { themeStore } from '@/store/themeStore';
     import ColorPicker from './ColorPicker.vue';
     import { findCourseAtTime } from '@/utils/courseTimeParser';
-    import { CourseColorManager } from '@/utils/courseColorManager';
+    import { CourseColorManager, compositeColor, readableTextColor } from '@/utils/courseColorManager';
 
     const props = defineProps<{
         schedule: CourseBundle;
@@ -175,23 +176,31 @@
     // Use color manager (make it reactive)
     const colorManager = reactive(new CourseColorManager());
 
+    // 亮色底/暗色底，与 .app-background 及深色模式 --el-bg-color 保持一致
+    const LIGHT_BASE = { r: 255, g: 255, b: 255 };
+    const DARK_BASE = { r: 46, g: 55, b: 72 };
+    const LIGHT_ALPHA = 0.55;
+    const DARK_ALPHA = 0.333;
+
+    function getCellBackground (id: string) {
+        const base = themeStore.isDark.value ? DARK_BASE : LIGHT_BASE;
+        const alpha = themeStore.isDark.value ? DARK_ALPHA : LIGHT_ALPHA;
+        return compositeColor(colorManager.getColor(id), alpha, base);
+    }
+
     function getCourseColor (id: string) {
-        const color = colorManager.getColor(id);
-        // 将十六进制颜色转换为 rgba 格式，添加 0.333 的透明度
-        const hex = color.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        return `rgba(${r}, ${g}, ${b}, 0.333)`;
+        const { r, g, b } = getCellBackground(id);
+        return `rgb(${r}, ${g}, ${b})`;
     }
 
     function changeColor (id: string) {
         colorManager.assignRandomColor(id);
     }
 
-    function getCourseStyle () {
+    function getCourseStyle (id: string) {
+        const { r, g, b } = getCellBackground(id);
         return {
-            color: '#fff',
+            color: readableTextColor({ r, g, b }),
             height: '100%',
             cursor: 'pointer',
             display: 'flex',
@@ -206,6 +215,8 @@
     }
 
     const hasFullCapacity = (course: Course) => typeof course.yxzrs === 'number' && typeof course.bksrl === 'number' && (course.bksrl ?? 0) > 0;
+
+    const hasCapacityInfo = (course: Course) => typeof course.yxzrs === 'number';
 
     const compactCapacityText = (course: Course) => {
         if (hasFullCapacity(course)) {

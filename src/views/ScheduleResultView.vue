@@ -15,6 +15,7 @@
                         <QuestionFilled />
                     </el-icon>
                 </el-button>
+                <ThemeToggle />
                 <GitHubStarButton />
             </div>
         </el-header>
@@ -145,7 +146,7 @@
     const router = useRouter();
     const scheduleRef = ref<HTMLElement | null>(null);
     const dragIndex = ref<number | null>(null);
-    const semesterStartDate = ref<Date>(new Date('2026-02-23')); // 默认学期开始日期
+    const semesterStartDate = ref<Date>(new Date('2026-09-07')); // 默认学期开始日期
 
     const currentPage = computed({
         get: () => store.currentResultIndex + 1,
