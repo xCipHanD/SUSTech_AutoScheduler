@@ -4,7 +4,7 @@
             style="height: auto; padding: 15px 20px; border-bottom: 1px solid var(--el-border-color); display: flex; justify-content: space-between; align-items: center;">
             <el-button @click="$router.go(-1)">返回</el-button>
             <h2 style="margin: 0;">帮助文档</h2>
-            <div style="width: 80px;"></div>
+            <GitHubStarButton />
         </el-header>
         <el-main>
             <div style="max-width: 800px; margin: 0 auto;">

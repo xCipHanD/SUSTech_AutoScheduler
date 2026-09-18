@@ -9,11 +9,14 @@
                 返回首页
             </el-button>
             <h2 style="margin: 0;">选课管理</h2>
-            <el-button link @click="$router.push('/help')" style="color: var(--el-text-color-secondary);">
-                <el-icon>
-                    <QuestionFilled />
-                </el-icon>
-            </el-button>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <el-button link @click="$router.push('/help')" style="color: var(--el-text-color-secondary);">
+                    <el-icon>
+                        <QuestionFilled />
+                    </el-icon>
+                </el-button>
+                <GitHubStarButton />
+            </div>
         </el-header>
 
         <el-container style="overflow: hidden;">
